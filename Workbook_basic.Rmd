@@ -1,0 +1,97 @@
+---
+title: "Workbook basic"
+author: "Max Odsbjerg Pedersen and Tanja Jessen"
+date: "26/10 - 2021"
+output: html_document
+---
+
+This Rmarkdown demonstrates the experimental API for publicly available data and metadata at the Royal Danish Library. It also demonstrates how to perform text mining on this data. We are going to see what words are significant to each month within a year of publications from the newspaper St. Croix Avis from year 1878. 
+
+Currently the API delivers public data from the Royal Danish Library's newspaper collection. Data from the Danish newspaper has to be older than 140 years to qualify as "public data". The API is presented in the Swagger UI and can return data in JSON, JSONL and CSV. Requests to the API are based on search queries in the Mediestream-platform. 
+
+Technical documentation and explanations on with fields are exported can be found on the [Swagger UI](http://labs.statsbiblioteket.dk/labsapi/api//api-docs?url=/labsapi/api/openapi.yaml)
+
+# Loading relevant libraries
+
+The dataset is processed in the software programme R, offering various methods for statistical analysis and graphic representation of the results. In R, one works with packages each adding numerous functionalities to the core functions of R. In this example, the relevant packages are:
+
+Documentation for each package: <br>
+*https://www.tidyverse.org/packages/ <br>
+*https://cran.r-project.org/web/packages/tidytext/vignettes/tidytext.html <br>
+*https://lubridate.tidyverse.org/ <br>
+*https://ggplot2.tidyverse.org/ <br>
+*https://cran.r-project.org/web/packages/ggwordcloud/vignettes/ggwordcloud.html<br>
+
+Additional information about R: 
+https://www.r-project.org/
+
+```{r, message=FALSE}
+
+```
+# Loading data from St. Croix Avis 1878
+
+The dataset is loaded into R. This is done via a retrieve link from the API. This link is created by the [Swagger UI](http://labs.statsbiblioteket.dk/labsapi/api//api-docs?url=/labsapi/api/openapi.yaml), which is documentation and user interface for the API. Here we have specified that we want newspaper data from the St. Croix Avis from the year 1878. This data is loaded into R with the `read_csv` function since we also have specified the data format to be CSV in the Swagger UI: 
+
+```{r}
+croix <- read_csv("http://labs.statsbiblioteket.dk/labsapi/api/aviser/export/fields?query=py%3A1878%20AND%20familyId%3Astcroixavisdvi&fields=link&fields=recordID&fields=timestamp&fields=pwa&fields=cer&fields=fulltext_org&fields=pageUUID&fields=editionUUID&fields=titleUUID&fields=editionId&fields=familyId&fields=newspaper_page&fields=newspaper_edition&fields=lplace&fields=location_name&fields=location_coordinates&max=5000&structure=header&structure=content&format=CSV")
+```
+CSV is short for Comma Separated Values that is a way of structuring a dataset in plain text. CSV files are structured in columns separated by commas and in rows separated by lines. Each row in the data corresponds to identified articles by the segmentations-process during the digitisation process of the newspapers.  
+In the output from the `read_csv`-function R tells us which columns are present in the dataset and what type of data it has recognised in the column's rows. Most of them are "col_character()", which means the rows in the column contains textual data (character signs). Others have the "col_double()", which means the rows in the column contains numbers. This is a question of datatypes, which can be very important when coding, but in the case of this workshop we won't work further with them.
+
+# The text mining task
+Text mining is a term that covers a large variety of approaches and concrete methods. In this example we will use the tidytext approach, which is presented in the book [Text Mining with R - a tidy approach](https://www.tidytextmining.com). 
+First we will focus on preparing our data for the monthly analysis. 
+
+## Extracting the months from the "timestamp" column
+Currently the only column we have containing temporal information is the column "timestamp". Let's examine this column:
+```{r}
+
+```
+The information stored in this column is pretty dense since it contains both year, month, day and hour, minute and second for the articles. In order to work with months as documents within the corpus of all the articles from St. Croix Avis from 1878 we have to extract the month from the "timestamp" column. We do this using the `month`-function from the lubridate-packages. This creates a new column called "m" for months:
+```{r}
+
+```
+
+## Tidy
+The data processing will be based on the Tidy Data Principle as it is implemented in the tidytext package. The notion is to take text and break it into individual words. In this way, there will be just one word per row in the dataset. This is achieved by using the `unnest_tokens`-function:
+
+```{r}
+
+
+```
+
+## Count words pr month
+Since we now have the text from the articles on the one word pr. row-format we can count the words to see, which words are used most frequently. Since we have prepared our month column we do the count within each month: 
+```{r}
+
+
+```
+
+## Remove stop words
+Not surprisingly, particles are the most common words we find. That is not very interesting. One way to minimize this problem is to use a list of stop words. Stop words are the most commonly used word such as "the" and "and". We want to remove them as they have no semantic meaning. The tidytext package contains a data frame of english stop words. We remove the stop words with `anti_join`:
+
+```{r}
+
+```
+
+The data from St. Croix Avis contains both english and danish articles, so we need a danish list of stop words too. Max Odsbjerg Pedersen has made a list containing stop words from the 19th century, and we load it in with the function `read_csv`:
+`
+```{r}
+stop_words_da <- read_csv("https://gist.githubusercontent.com/maxodsbjerg/4d1e3b1081ebba53a8d2c3aae2a1a070/raw/b53272e7deaa9ece78991c838b4857b6abefb2ce/stopord_18.csv")
+```
+
+As we did before we remove the danish stop words with `anti_join`:
+```{r}
+
+```
+
+
+Now that we have the data it would be nice to get an overview of the most frequent words within each month. A visualization is always a good way to get such an overview.
+Lets make a bar chart for the most frequent words within each month. 
+
+```{r}
+
+```
+
+
+
